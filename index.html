@@ -1,0 +1,305 @@
+<html>
+  <head>
+    <title>Scrypress</title>
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+      integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+      crossorigin="anonymous"
+    />
+  </head>
+
+  <body ng-app="cardApp">
+    <div class="container" ng-controller="CardAppController">
+      <div class="row">
+        <div class="col">
+          <h1>Scrypress</h1>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <div class="form-group">
+            <label for="deckList">Decklist</label>
+            <textarea
+              class="form-control"
+              id="deckList"
+              rows="15"
+              ng-model="decklist"
+            ></textarea>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="form-group">
+                <label for="cardWidth">Card width</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  id="cardWidth"
+                  ng-model="cardWidth"
+                />
+              </div>
+            </div>
+            <div class="col">
+              <div class="form-group">
+                <label for="cardHeight">Card height</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  id="cardHeight"
+                  ng-model="cardHeight"
+                />
+              </div>
+            </div>
+            <div class="col">
+              <div class="form-group">
+                <label for="units">Units</label>
+                <select
+                  id="units"
+                  class="custom-select"
+                  ng-options="unit as unit.value for unit in units track by unit.id"
+                  ng-model="selectedUnit"
+                ></select>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <div class="form-group">
+                <label for="marginTop">Margin top</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  id="marginTop"
+                  ng-model="margin.top"
+                />
+              </div>
+            </div>
+            <div class="col">
+              <div class="form-group">
+                <label for="marginLeft">Margin left</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  id="marginLeft"
+                  ng-model="margin.left"
+                />
+              </div>
+            </div>
+            <div class="col">
+              <div class="form-group">
+                <label for="space">Space</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  id="space"
+                  ng-model="margin.space"
+                />
+              </div>
+            </div>
+            <div class="col">
+              <div class="form-group">
+                <label for="pageSize">Page size</label>
+                <select
+                  id="pageSize"
+                  class="custom-select"
+                  ng-options="pageType as pageType.value for pageType in pageTypes track by pageType.id"
+                  ng-model="selectedPageType"
+                ></select>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <button type="button" class="btn btn-primary" ng-click="build()">
+                Get cards
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger"
+                ng-click="downloadPdf()"
+                ng-if="showPdf"
+              >
+                Export to PDF
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="col-7">
+          <div class="row">
+            <div class="col">
+              <div
+                class="alert {{ notification.class }}"
+                ng-repeat="notification in notifications track by $index"
+              >
+                {{ notification.message }}
+              </div>
+              <img
+                class="rounded float-left mt-1 ml-1"
+                ng-repeat="image in images track by $index"
+                ng-src="{{ image.smallImageUrl }}"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.7.5/angular.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.min.js"></script>
+    <script>
+      angular
+        .module('cardApp', [])
+        .controller('CardAppController', ($scope, $http, $q) => {
+          let imageCache = [];
+          $scope.images = [];
+
+          $scope.decklist = `1 Forest\n1 Island\n1 Mountain\n1 Plains\n1 Swamp`;
+          $scope.notifications = [];
+          $scope.imageType = 'png';
+          $scope.showPdf = false;
+
+          $scope.cardWidth = 6.29;
+          $scope.cardHeight = 8.83;
+          $scope.margin = {
+            top: 0.5,
+            left: 0.5,
+            space: 0.5
+          };
+
+          $scope.units = [{ id: 1, value: 'cm' }, { id: 2, value: 'in' }];
+          $scope.selectedUnit = $scope.units[0];
+          $scope.pageTypes = [
+            { id: 1, value: 'a4' },
+            { id: 2, value: 'letter' }
+          ];
+          $scope.selectedPageType = $scope.pageTypes[0];
+
+          $scope.convertImgUrlToBase64 = data => {
+            let deferred = $q.defer();
+
+            let img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = function() {
+              let canvas = document.createElement('CANVAS');
+              let ctx = canvas.getContext('2d');
+              canvas.height = this.height;
+              canvas.width = this.width;
+              ctx.drawImage(this, 0, 0);
+              let dataURL = canvas.toDataURL('image/' + $scope.imageType);
+              deferred.resolve({
+                name: data.data.name,
+                smallImageUrl: data.data.image_uris.small,
+                base64: dataURL
+              });
+              canvas = null;
+            };
+            img.src = data.data.image_uris.normal;
+
+            return deferred.promise;
+          };
+
+          $scope.build = () => {
+            $scope.showPdf = false;
+            $scope.images = [];
+            imageCache = [];
+            $scope.notifications = [];
+            let all = [];
+            Array.from($scope.decklist.split('\n')).forEach(row => {
+              let cardName = row.replace(/^\d+\s/, '');
+              let copies = 1;
+              let rowHasNumber = /^\d+/.exec(row);
+              if (rowHasNumber) {
+                copies = parseInt(rowHasNumber[0], 10);
+              }
+
+              all.push(
+                $http({
+                  method: 'GET',
+                  url: 'https://api.scryfall.com/cards/named',
+                  params: {
+                    exact: cardName
+                  },
+                  cache: true
+                })
+                  .then(data => {
+                    return $scope.convertImgUrlToBase64(data);
+                  })
+                  .then(img => {
+                    for (let i = 0; i < copies; i++) {
+                      imageCache.push(img);
+                    }
+                  })
+                  .catch(ex => {
+                    $scope.notifications.push({
+                      class: 'alert-danger',
+                      message: `Failed getting card: ${cardName}.`
+                    });
+                    console.log('Error: ', ex);
+                  })
+              );
+            });
+
+            $q.all(all).then(data => {
+              $scope.showPdf = true;
+              $scope.notifications.push({
+                class: 'alert-info',
+                message: `${imageCache.length} cards / ${Math.ceil(
+                  imageCache.length / 9
+                )} pages.`
+              });
+              $scope.images = imageCache.sort((a, b) =>
+                a.name > b.name ? 1 : b.name > a.name ? -1 : 0
+              );
+            });
+          };
+
+          $scope.downloadPdf = () => {
+            let doc = new jsPDF({
+              orientation: 'p',
+              unit: $scope.selectedUnit.value,
+              format: $scope.selectedPageType.value
+            });
+
+            $scope.images.forEach((img, index) => {
+              let y =
+                $scope.margin.top +
+                Math.floor((index % 9) / 3) *
+                  ($scope.cardHeight + $scope.margin.space);
+
+              let x = $scope.margin.left;
+
+              if ((index + 1) % 3 == 1) {
+                x += 0;
+              } else if ((index + 1) % 3 == 2) {
+                x += $scope.cardWidth + $scope.margin.space;
+              } else if ((index + 1) % 3 == 0) {
+                x += ($scope.cardWidth + $scope.margin.space) * 2;
+              }
+
+              doc.addImage(
+                img.base64,
+                $scope.imageType,
+                x,
+                y,
+                $scope.cardWidth,
+                $scope.cardHeight,
+                index,
+                'NONE',
+                0
+              );
+
+              if ((index + 1) % 9 == 0) {
+                doc.addPage($scope.selectedPageType.value, 'p');
+              }
+            });
+
+            doc.save('cards.pdf');
+          };
+        });
+    </script>
+  </body>
+</html>
