@@ -1,2 +1,3 @@
-# scrypress
-Export decklists to PDF
+# Scrypress
+
+Export decklists to PDF.
