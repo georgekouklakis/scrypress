@@ -178,28 +178,51 @@
           ];
           $scope.selectedPageType = $scope.pageTypes[0];
 
-          $scope.convertImgUrlToBase64 = data => {
-            let deferred = $q.defer();
+          $scope.checkforDoubleFaced = data => {
+            const deferred = $q.defer();
+            const cardArray = [];
 
-            let img = new Image();
-            img.crossOrigin = 'Anonymous';
-            img.onload = function() {
-              let canvas = document.createElement('CANVAS');
-              let ctx = canvas.getContext('2d');
-              canvas.height = this.height;
-              canvas.width = this.width;
-              ctx.drawImage(this, 0, 0);
-              let dataURL = canvas.toDataURL('image/' + $scope.imageType);
-              deferred.resolve({
-                name: data.data.name,
-                smallImageUrl: data.data.image_uris.small,
-                base64: dataURL
+            if (data.data.layout === "transform" && data.data.card_faces) {              
+              data.data.card_faces.forEach(card => {
+                const newData = JSON.parse(JSON.stringify(data));
+                newData.data.image_uris = card.image_uris
+                newData.data.name = card.name
+                cardArray.push(newData)
               });
-              canvas = null;
-            };
-            img.src = data.data.image_uris.normal;
+            } else {
+              cardArray.push(data);
+            }
 
+            deferred.resolve(cardArray);
             return deferred.promise;
+          };
+
+          $scope.convertImgUrlToBase64 = dataArray => {
+            const promiseArray = [];
+
+            dataArray.forEach(data => {
+              const deferred = $q.defer();
+              const img = new Image();
+              img.crossOrigin = 'Anonymous';
+              img.onload = function() {
+                let canvas = document.createElement('CANVAS');
+                const ctx = canvas.getContext('2d');
+                canvas.height = this.height;
+                canvas.width = this.width;
+                ctx.drawImage(this, 0, 0);
+                const dataURL = canvas.toDataURL('image/' + $scope.imageType);
+                deferred.resolve({
+                  name: data.data.name,
+                  smallImageUrl: data.data.image_uris.small,
+                  base64: dataURL
+                });
+                canvas = null;
+              };
+              img.src = data.data.image_uris.normal;
+              promiseArray.push(deferred.promise);
+            });
+
+            return $q.all(promiseArray);
           };
 
           $scope.build = () => {
@@ -209,6 +232,10 @@
             $scope.notifications = [];
             let all = [];
             Array.from($scope.decklist.split('\n')).forEach(row => {
+              if (row.match(/((\r\n|\n|\r)$)|(^(\r\n|\n|\r))|^\s*$/gm)) {
+                return;
+              }
+
               let cardName = row.replace(/^\d+\s/, '');
               let copies = 1;
               let rowHasNumber = /^\d+/.exec(row);
@@ -225,21 +252,22 @@
                   },
                   cache: true
                 })
-                  .then(data => {
-                    return $scope.convertImgUrlToBase64(data);
-                  })
-                  .then(img => {
+                .then($scope.checkforDoubleFaced)
+                .then($scope.convertImgUrlToBase64)
+                .then(imgArray => {
+                  imgArray.forEach(img => {
                     for (let i = 0; i < copies; i++) {
                       imageCache.push(img);
                     }
-                  })
-                  .catch(ex => {
-                    $scope.notifications.push({
-                      class: 'alert-danger',
-                      message: `Failed getting card: ${cardName}.`
-                    });
-                    console.log('Error: ', ex);
-                  })
+                  });
+                })
+                .catch(ex => {
+                  $scope.notifications.push({
+                    class: 'alert-danger',
+                    message: `Failed getting card: ${cardName}`
+                  });
+                  console.log('Error: ', ex);
+                })
               );
             });
 
