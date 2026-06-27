@@ -1,333 +1,587 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
-    <title>Scrypress</title>
-    <link
-      rel="stylesheet"
-      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
-      integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
-      crossorigin="anonymous"
-    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scrypress — MTG Proxy Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+    <style>
+      :root {
+        --gold:         #c89b3c;
+        --gold-dark:    #9a7520;
+        --gold-light:   #e8c56a;
+        --bg:           #0e1018;
+        --panel:        #161922;
+        --panel-alt:    #0b0d14;
+        --border:       #252a38;
+        --border-gold:  rgba(200, 155, 60, 0.28);
+        --text:         #e2d5b8;
+        --text-muted:   #6a7585;
+      }
+
+      *, *::before, *::after { box-sizing: border-box; }
+
+      body {
+        background-color: var(--bg);
+        background-image: radial-gradient(ellipse 90% 45% at 50% -5%, #1c2145 0%, transparent 65%);
+        color: var(--text);
+        font-family: 'Crimson Text', Georgia, serif;
+        font-size: 1.05rem;
+        min-height: 100vh;
+      }
+
+      /* ─── Header ───────────────────────────────────── */
+
+      .app-header {
+        text-align: center;
+        padding: 2.75rem 1rem 0;
+      }
+
+      .app-title {
+        font-family: 'Cinzel', serif;
+        font-size: clamp(2rem, 5vw, 3rem);
+        font-weight: 600;
+        color: var(--gold);
+        letter-spacing: 0.2em;
+        text-shadow: 0 0 40px rgba(200, 155, 60, 0.3), 0 2px 6px rgba(0,0,0,0.9);
+        margin: 0;
+      }
+
+      .app-title .deco { color: var(--gold-dark); font-size: 0.7em; }
+
+      .app-subtitle {
+        font-family: 'Cinzel', serif;
+        color: var(--text-muted);
+        font-size: 0.65rem;
+        letter-spacing: 0.4em;
+        text-transform: uppercase;
+        margin: 0.5rem 0 0;
+      }
+
+      .header-rule {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--gold), transparent);
+        opacity: 0.4;
+        margin: 2rem auto 0;
+        border: none;
+      }
+
+      /* ─── Panel ────────────────────────────────────── */
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border-gold);
+        border-radius: 6px;
+        padding: 1.5rem;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(200,155,60,0.07);
+      }
+
+      .panel-section-label {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        font-family: 'Cinzel', serif;
+        font-size: 0.62rem;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: var(--gold);
+        opacity: 0.65;
+        margin-bottom: 1rem;
+      }
+
+      .panel-section-label::before,
+      .panel-section-label::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border-gold);
+      }
+
+      /* ─── Field group box ───────────────────────────── */
+
+      .field-group {
+        background: var(--panel-alt);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 0.9rem 0.9rem 0.1rem;
+        margin-bottom: 1.25rem;
+      }
+
+      /* ─── Form controls ─────────────────────────────── */
+
+      .form-label {
+        font-family: 'Cinzel', serif;
+        font-size: 0.62rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 0.35rem;
+        display: block;
+      }
+
+      .form-control,
+      .form-select {
+        background-color: var(--panel-alt);
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-family: inherit;
+        font-size: 0.95rem;
+        border-radius: 4px;
+        transition: border-color 0.18s, box-shadow 0.18s;
+      }
+
+      .form-control:focus,
+      .form-select:focus {
+        background-color: var(--panel-alt);
+        border-color: var(--gold-dark);
+        box-shadow: 0 0 0 3px rgba(200, 155, 60, 0.14);
+        color: var(--text);
+        outline: none;
+      }
+
+      .form-control::placeholder { color: #2e3448; }
+
+      textarea.form-control {
+        font-family: 'Courier New', monospace;
+        font-size: 0.88rem;
+        line-height: 1.7;
+        resize: vertical;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) var(--panel-alt);
+      }
+
+      .form-select option { background: #1a1d2c; }
+
+      /* ─── Buttons ───────────────────────────────────── */
+
+      .btn-gold {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        background: linear-gradient(160deg, #7a5c0e 0%, #c89b3c 48%, #7a5c0e 100%);
+        border: 1px solid #7a5c0e;
+        color: #150f00;
+        font-family: 'Cinzel', serif;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 0.55rem 1.6rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        text-decoration: none;
+      }
+
+      .btn-gold:hover:not(:disabled) {
+        background: linear-gradient(160deg, #9a7520 0%, #e8c56a 48%, #9a7520 100%);
+        border-color: #9a7520;
+        color: #150f00;
+        box-shadow: 0 0 18px rgba(200,155,60,0.38), 0 2px 10px rgba(0,0,0,0.5);
+        transform: translateY(-1px);
+      }
+
+      .btn-gold:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn-crimson {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        background: linear-gradient(160deg, #3e0c0c 0%, #8b1a1a 48%, #3e0c0c 100%);
+        border: 1px solid #5e1010;
+        color: #f5c0c0;
+        font-family: 'Cinzel', serif;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 0.55rem 1.6rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      }
+
+      .btn-crimson:hover {
+        background: linear-gradient(160deg, #5e1010 0%, #b02020 48%, #5e1010 100%);
+        border-color: #8b1010;
+        color: #ffd5d5;
+        box-shadow: 0 0 18px rgba(139,26,26,0.45), 0 2px 10px rgba(0,0,0,0.5);
+        transform: translateY(-1px);
+      }
+
+      /* ─── Spinner ───────────────────────────────────── */
+
+      .spinner-border {
+        width: 0.85rem;
+        height: 0.85rem;
+        border-width: 0.14em;
+        border-color: #150f00;
+        border-right-color: transparent;
+      }
+
+      /* ─── Alerts ────────────────────────────────────── */
+
+      .alert {
+        border: none;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        padding: 0.55rem 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .alert-danger {
+        background: rgba(139, 26, 26, 0.2);
+        border-left: 3px solid #8b1a1a;
+        color: #e89090;
+      }
+
+      .alert-info {
+        background: rgba(26, 60, 105, 0.28);
+        border-left: 3px solid #2a5c9b;
+        color: #90b8e8;
+      }
+
+      /* ─── Card grid ─────────────────────────────────── */
+
+      .card-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .card-grid img {
+        width: auto;
+        height: auto;
+        border-radius: 5px;
+        display: block;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.7);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .card-grid img:hover {
+        transform: scale(1.04);
+        box-shadow: 0 8px 28px rgba(0,0,0,0.85), 0 0 0 1px rgba(200,155,60,0.28);
+        position: relative;
+        z-index: 1;
+      }
+
+      /* ─── Empty state ───────────────────────────────── */
+
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 220px;
+        gap: 0.6rem;
+        color: var(--text-muted);
+      }
+
+      .empty-state-symbol {
+        font-size: 2.4rem;
+        opacity: 0.18;
+        line-height: 1;
+      }
+
+      .empty-state-text {
+        font-family: 'Cinzel', serif;
+        font-size: 0.65rem;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        opacity: 0.5;
+      }
+
+      /* ─── Misc ──────────────────────────────────────── */
+
+      [x-cloak] { display: none !important; }
+
+      .mb-3 { margin-bottom: 1rem !important; }
+    </style>
   </head>
 
-  <body ng-app="cardApp">
-    <div class="container" ng-controller="CardAppController">
-      <div class="row">
-        <div class="col">
-          <h1>Scrypress</h1>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col">
-          <div class="form-group">
-            <label for="deckList">Decklist</label>
-            <textarea
-              class="form-control"
-              id="deckList"
-              rows="15"
-              ng-model="decklist"
-            ></textarea>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="form-group">
-                <label for="cardWidth">Card width</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  class="form-control"
-                  id="cardWidth"
-                  ng-model="cardWidth"
-                />
+  <body>
+
+    <header class="app-header">
+      <h1 class="app-title">
+        <span class="deco">✦</span>&nbsp;Scrypress&nbsp;<span class="deco">✦</span>
+      </h1>
+      <p class="app-subtitle">MTG Proxy Card Generator</p>
+      <hr class="header-rule" />
+    </header>
+
+    <div class="container py-4 pb-5" x-data="cardApp()" x-cloak>
+      <div class="row g-4">
+
+        <!-- ── Form ── -->
+        <div class="col-lg-5">
+          <div class="panel">
+
+            <div class="panel-section-label">Decklist</div>
+            <div class="mb-3">
+              <label for="deckList" class="form-label">Card list</label>
+              <textarea
+                class="form-control"
+                id="deckList"
+                rows="13"
+                x-model="decklist"
+                placeholder="1 Forest&#10;4 Lightning Bolt&#10;2 Counterspell"
+              ></textarea>
+            </div>
+
+            <div class="panel-section-label">Card Dimensions</div>
+            <div class="field-group">
+              <div class="row g-2">
+                <div class="col">
+                  <div class="mb-3">
+                    <label for="cardWidth" class="form-label">Width</label>
+                    <input type="number" step="0.01" class="form-control" id="cardWidth" x-model.number="cardWidth" />
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="mb-3">
+                    <label for="cardHeight" class="form-label">Height</label>
+                    <input type="number" step="0.01" class="form-control" id="cardHeight" x-model.number="cardHeight" />
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="mb-3">
+                    <label for="units" class="form-label">Units</label>
+                    <select id="units" class="form-select" x-model="selectedUnit">
+                      <option value="cm">cm</option>
+                      <option value="in">in</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="col">
-              <div class="form-group">
-                <label for="cardHeight">Card height</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  class="form-control"
-                  id="cardHeight"
-                  ng-model="cardHeight"
-                />
+
+            <div class="panel-section-label">Page Layout</div>
+            <div class="field-group">
+              <div class="row g-2">
+                <div class="col">
+                  <div class="mb-3">
+                    <label for="marginTop" class="form-label">Margin top</label>
+                    <input type="number" step="0.01" class="form-control" id="marginTop" x-model.number="margin.top" />
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="mb-3">
+                    <label for="marginLeft" class="form-label">Margin left</label>
+                    <input type="number" step="0.01" class="form-control" id="marginLeft" x-model.number="margin.left" />
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="mb-3">
+                    <label for="space" class="form-label">Spacing</label>
+                    <input type="number" step="0.01" class="form-control" id="space" x-model.number="margin.space" />
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="mb-3">
+                    <label for="pageSize" class="form-label">Page size</label>
+                    <select id="pageSize" class="form-select" x-model="selectedPageType">
+                      <option value="a4">A4</option>
+                      <option value="letter">Letter</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="col">
-              <div class="form-group">
-                <label for="units">Units</label>
-                <select
-                  id="units"
-                  class="custom-select"
-                  ng-options="unit as unit.value for unit in units track by unit.id"
-                  ng-model="selectedUnit"
-                ></select>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="form-group">
-                <label for="marginTop">Margin top</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  class="form-control"
-                  id="marginTop"
-                  ng-model="margin.top"
-                />
-              </div>
-            </div>
-            <div class="col">
-              <div class="form-group">
-                <label for="marginLeft">Margin left</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  class="form-control"
-                  id="marginLeft"
-                  ng-model="margin.left"
-                />
-              </div>
-            </div>
-            <div class="col">
-              <div class="form-group">
-                <label for="space">Space</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  class="form-control"
-                  id="space"
-                  ng-model="margin.space"
-                />
-              </div>
-            </div>
-            <div class="col">
-              <div class="form-group">
-                <label for="pageSize">Page size</label>
-                <select
-                  id="pageSize"
-                  class="custom-select"
-                  ng-options="pageType as pageType.value for pageType in pageTypes track by pageType.id"
-                  ng-model="selectedPageType"
-                ></select>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <button type="button" class="btn btn-primary" ng-click="build()">
-                Get cards
+
+            <div class="d-flex gap-2 flex-wrap">
+              <button type="button" class="btn-gold" @click="build()" :disabled="loading">
+                <span x-show="loading" class="spinner-border" role="status" aria-hidden="true"></span>
+                <span x-text="loading ? 'Summoning…' : 'Summon Cards'"></span>
               </button>
-              <button
-                type="button"
-                class="btn btn-danger"
-                ng-click="downloadPdf()"
-                ng-if="showPdf"
-              >
+              <button type="button" class="btn-crimson" @click="downloadPdf()" x-show="showPdf">
                 Export to PDF
               </button>
             </div>
+
           </div>
         </div>
-        <div class="col-7">
-          <div class="row">
-            <div class="col">
-              <div
-                class="alert {{ notification.class }}"
-                ng-repeat="notification in notifications track by $index"
-              >
-                {{ notification.message }}
-              </div>
-              <img
-                class="rounded float-left mt-1 ml-1"
-                ng-repeat="image in images track by $index"
-                ng-src="{{ image.smallImageUrl }}"
-              />
+
+        <!-- ── Preview ── -->
+        <div class="col-lg-7">
+          <div class="panel h-100">
+
+            <div class="panel-section-label">Card Preview</div>
+
+            <div x-show="notifications.length > 0" class="mb-3">
+              <template x-for="(notification, index) in notifications" :key="index">
+                <div :class="'alert ' + notification.class" x-text="notification.message"></div>
+              </template>
             </div>
+
+            <div x-show="images.length === 0 && !loading" class="empty-state">
+              <div class="empty-state-symbol">⚔</div>
+              <div class="empty-state-text">Your cards will appear here</div>
+            </div>
+
+            <div class="card-grid">
+              <template x-for="(image, index) in images" :key="index">
+                <img :src="image.smallImageUrl" :alt="image.name" />
+              </template>
+            </div>
+
           </div>
         </div>
+
       </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.7.5/angular.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.min.js"></script>
+
     <script>
-      angular
-        .module('cardApp', [])
-        .controller('CardAppController', ($scope, $http, $q) => {
-          let imageCache = [];
-          $scope.images = [];
+      function cardApp() {
+        return {
+          _imageCache: [],
+          images: [],
+          decklist: `1 Forest\n1 Island\n1 Mountain\n1 Plains\n1 Swamp`,
+          notifications: [],
+          imageType: 'png',
+          showPdf: false,
+          loading: false,
+          cardWidth: 6.29,
+          cardHeight: 8.83,
+          margin: { top: 0.5, left: 0.5, space: 0.5 },
+          selectedUnit: 'cm',
+          selectedPageType: 'a4',
+          _apiCache: new Map(),
 
-          $scope.decklist = `1 Forest\n1 Island\n1 Mountain\n1 Plains\n1 Swamp`;
-          $scope.notifications = [];
-          $scope.imageType = 'png';
-          $scope.showPdf = false;
-
-          $scope.cardWidth = 6.29;
-          $scope.cardHeight = 8.83;
-          $scope.margin = {
-            top: 0.5,
-            left: 0.5,
-            space: 0.5
-          };
-
-          $scope.units = [{ id: 1, value: 'cm' }, { id: 2, value: 'in' }];
-          $scope.selectedUnit = $scope.units[0];
-          $scope.pageTypes = [
-            { id: 1, value: 'a4' },
-            { id: 2, value: 'letter' }
-          ];
-          $scope.selectedPageType = $scope.pageTypes[0];
-
-          $scope.checkforDoubleFaced = data => {
-            const deferred = $q.defer();
-            const cardArray = [];
-
-            if (data.data.layout === "transform" && data.data.card_faces) {              
-              data.data.card_faces.forEach(card => {
-                const newData = JSON.parse(JSON.stringify(data));
-                newData.data.image_uris = card.image_uris
-                newData.data.name = card.name
-                cardArray.push(newData)
-              });
-            } else {
-              cardArray.push(data);
+          checkForDoubleFaced(data) {
+            if (data.layout === 'transform' && data.card_faces) {
+              return data.card_faces.map(face => ({
+                ...data,
+                image_uris: face.image_uris,
+                name: face.name,
+              }));
             }
+            return [data];
+          },
 
-            deferred.resolve(cardArray);
-            return deferred.promise;
-          };
-
-          $scope.convertImgUrlToBase64 = dataArray => {
-            const promiseArray = [];
-
-            dataArray.forEach(data => {
-              const deferred = $q.defer();
+          convertImgToBase64(cardData) {
+            const imageType = this.imageType;
+            return new Promise((resolve, reject) => {
               const img = new Image();
               img.crossOrigin = 'Anonymous';
-              img.onload = function() {
-                let canvas = document.createElement('CANVAS');
+              img.onload = function () {
+                const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                canvas.height = this.height;
-                canvas.width = this.width;
+                canvas.height = this.naturalHeight;
+                canvas.width = this.naturalWidth;
                 ctx.drawImage(this, 0, 0);
-                const dataURL = canvas.toDataURL('image/' + $scope.imageType);
-                deferred.resolve({
-                  name: data.data.name,
-                  smallImageUrl: data.data.image_uris.small,
-                  base64: dataURL
+                resolve({
+                  name: cardData.name,
+                  smallImageUrl: cardData.image_uris.small,
+                  base64: canvas.toDataURL('image/' + imageType),
                 });
-                canvas = null;
               };
-              img.src = data.data.image_uris.normal;
-              promiseArray.push(deferred.promise);
+              img.onerror = reject;
+              img.src = cardData.image_uris.normal;
             });
+          },
 
-            return $q.all(promiseArray);
-          };
+          async fetchCard(cardName) {
+            if (this._apiCache.has(cardName)) {
+              return this._apiCache.get(cardName);
+            }
+            const url = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cardName)}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            this._apiCache.set(cardName, data);
+            return data;
+          },
 
-          $scope.build = () => {
-            $scope.showPdf = false;
-            $scope.images = [];
-            imageCache = [];
-            $scope.notifications = [];
-            let all = [];
-            Array.from($scope.decklist.split('\n')).forEach(row => {
-              if (row.match(/((\r\n|\n|\r)$)|(^(\r\n|\n|\r))|^\s*$/gm)) {
-                return;
+          async build() {
+            this.showPdf = false;
+            this.images = [];
+            this._imageCache = [];
+            this.notifications = [];
+            this.loading = true;
+
+            const rows = this.decklist.split('\n').filter(row => !/^\s*$/.test(row));
+
+            await Promise.all(rows.map(async row => {
+              const cardName = row.replace(/^\d+\s/, '');
+              const match = /^\d+/.exec(row);
+              const copies = match ? parseInt(match[0], 10) : 1;
+
+              try {
+                const data = await this.fetchCard(cardName);
+                const cards = this.checkForDoubleFaced(data);
+                const imgs = await Promise.all(cards.map(card => this.convertImgToBase64(card)));
+                imgs.forEach(img => {
+                  for (let i = 0; i < copies; i++) {
+                    this._imageCache.push(img);
+                  }
+                });
+              } catch (ex) {
+                this.notifications.push({
+                  class: 'alert-danger',
+                  message: `Failed getting card: ${cardName}`,
+                });
+                console.error('Error:', ex);
               }
+            }));
 
-              let cardName = row.replace(/^\d+\s/, '');
-              let copies = 1;
-              let rowHasNumber = /^\d+/.exec(row);
-              if (rowHasNumber) {
-                copies = parseInt(rowHasNumber[0], 10);
-              }
-
-              all.push(
-                $http({
-                  method: 'GET',
-                  url: 'https://api.scryfall.com/cards/named',
-                  params: {
-                    exact: cardName
-                  },
-                  cache: true
-                })
-                .then($scope.checkforDoubleFaced)
-                .then($scope.convertImgUrlToBase64)
-                .then(imgArray => {
-                  imgArray.forEach(img => {
-                    for (let i = 0; i < copies; i++) {
-                      imageCache.push(img);
-                    }
-                  });
-                })
-                .catch(ex => {
-                  $scope.notifications.push({
-                    class: 'alert-danger',
-                    message: `Failed getting card: ${cardName}`
-                  });
-                  console.log('Error: ', ex);
-                })
-              );
+            this.loading = false;
+            this.showPdf = true;
+            this.notifications.push({
+              class: 'alert-info',
+              message: `${this._imageCache.length} cards · ${Math.ceil(this._imageCache.length / 9)} pages`,
             });
+            this.images = [...this._imageCache].sort((a, b) =>
+              a.name > b.name ? 1 : b.name > a.name ? -1 : 0
+            );
+          },
 
-            $q.all(all).then(data => {
-              $scope.showPdf = true;
-              $scope.notifications.push({
-                class: 'alert-info',
-                message: `${imageCache.length} cards / ${Math.ceil(
-                  imageCache.length / 9
-                )} pages.`
-              });
-              $scope.images = imageCache.sort((a, b) =>
-                a.name > b.name ? 1 : b.name > a.name ? -1 : 0
-              );
-            });
-          };
-
-          $scope.downloadPdf = () => {
-            let doc = new jsPDF({
+          downloadPdf() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
               orientation: 'p',
-              unit: $scope.selectedUnit.value,
-              format: $scope.selectedPageType.value
+              unit: this.selectedUnit,
+              format: this.selectedPageType,
             });
 
-            $scope.images.forEach((img, index) => {
-              let y =
-                $scope.margin.top +
-                Math.floor((index % 9) / 3) *
-                  ($scope.cardHeight + $scope.margin.space);
-
-              let x = $scope.margin.left;
-
-              if ((index + 1) % 3 == 1) {
-                x += 0;
-              } else if ((index + 1) % 3 == 2) {
-                x += $scope.cardWidth + $scope.margin.space;
-              } else if ((index + 1) % 3 == 0) {
-                x += ($scope.cardWidth + $scope.margin.space) * 2;
-              }
+            this.images.forEach((img, index) => {
+              const row = Math.floor((index % 9) / 3);
+              const col = index % 3;
+              const y = this.margin.top + row * (this.cardHeight + this.margin.space);
+              const x = this.margin.left + col * (this.cardWidth + this.margin.space);
 
               doc.addImage(
                 img.base64,
-                $scope.imageType,
+                this.imageType.toUpperCase(),
                 x,
                 y,
-                $scope.cardWidth,
-                $scope.cardHeight,
-                index,
-                'NONE',
+                this.cardWidth,
+                this.cardHeight,
+                img.name,
+                'FAST',
                 0
               );
 
-              if ((index + 1) % 9 == 0) {
-                doc.addPage($scope.selectedPageType.value, 'p');
+              if ((index + 1) % 9 === 0 && index + 1 < this.images.length) {
+                doc.addPage(this.selectedPageType, 'p');
               }
             });
 
             doc.save('cards.pdf');
-          };
-        });
+          },
+        };
+      }
     </script>
+
   </body>
 </html>
