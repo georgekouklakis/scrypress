@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); echo \"$f\" | grep -q 'index\\.html$' && cd /home/user/scrypress && git add index.html && git diff --cached --quiet || git commit -m 'deploy: update index.html' && git push origin HEAD 2>/dev/null || true",
+            "statusMessage": "Deploying index.html..."
+          }
+        ]
+      }
+    ]
+  }
+}
